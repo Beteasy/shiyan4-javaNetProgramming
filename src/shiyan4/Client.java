@@ -4,20 +4,16 @@ import java.awt.*;
 import java.awt.event.*;
 import java.io.*;
 import java.net.*;
-
 import javax.swing.*;
 
 public class Client {
 	public static void main(String[] args) {
-		// TODO Auto-generated method stub
-		Client client = new Client();
-		ClientWindow client2 = new ClientWindow();
+		ClientWindow clientWindow = new ClientWindow();
 	}
 
 }
 
 class ClientWindow extends JFrame implements Runnable, ActionListener{
-
 	private static final long serialVersionUID = 1L;
 	JButton connectButton, sendButton;
 	JLabel rentLabel, waterLabel, electricityLabel, wuyeLabel;
@@ -27,7 +23,7 @@ class ClientWindow extends JFrame implements Runnable, ActionListener{
 	Socket socket = null;
 	DataInputStream in = null;
 	DataOutputStream out = null;
-	Thread thread;
+	Thread thread;	//客户端的线程用来不断读取服务器信息响应
 	
 	ClientWindow(){
 		init();
@@ -35,9 +31,6 @@ class ClientWindow extends JFrame implements Runnable, ActionListener{
 		this.setTitle("客户端");
 		this.setVisible(true);
 		this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		
-		socket = new Socket();
-		thread = new Thread();
 	}
 	
 	void init(){
@@ -87,25 +80,61 @@ class ClientWindow extends JFrame implements Runnable, ActionListener{
 		connectButton.addActionListener(this);
 		sendButton.addActionListener(this);
 	}
-	
-	@Override
-	public void run() {
-		// TODO Auto-generated method stub
-		
-	}
 
 	@Override
 	public void actionPerformed(ActionEvent e) {
-		// TODO Auto-generated method stub
-		
-		try {
-			InetAddress inetAddress = InetAddress.getByName("127.0.0.1");
-		} catch (UnknownHostException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
+		if(e.getSource() == connectButton) {
+			socket = new Socket();
+			thread = new Thread();
+			InetAddress inetAddress;
+			try {
+				if(socket.isConnected()) {
+					//如果已连接，则什么也不做
+				}
+				else {
+					//建立连接
+					inetAddress = InetAddress.getByName("127.0.0.1");
+					InetSocketAddress endpoint = new InetSocketAddress(inetAddress,2333);
+					socket.connect(endpoint);
+					in = new DataInputStream(socket.getInputStream());
+					out = new DataOutputStream(socket.getOutputStream());
+					sendButton.setEnabled(true);
+					if(!(thread.isAlive())) {
+						thread = new Thread(this);
+					}
+					thread.start();
+				}
+			}
+			catch (Exception e1) {
+				System.out.println(e1);
+				socket = new Socket();
+			}
 		}
-		InetSocketAddress inetSocketAddress = new InetSocketAddress(inetAddress,23333);
-		
+		if(e.getSource() == sendButton) {
+			String s = rentText.getText()+","+waterText.getText()+","+electricityText.getText()+","+wuyeText.getText();
+			String s2 = "输入账单:\n"
+					+ "房租:"+rentText.getText()+"元 水费:"+waterText.getText()+"元 电费:"
+					+electricityText.getText()+"元 物业费:"+wuyeText.getText()+"元\n";
+			area.append(s2);
+			try {
+				out.writeUTF(s);
+			} catch (IOException e1) {}
+		}
+	}
+
+	@Override
+	public void run() {
+		String s = null;
+		while(true) {
+			try {
+				s = in.readUTF();
+				area.append(s);
+			} catch (IOException e) {
+				area.append("与服务器断开连接");
+				socket = new Socket();
+				break;
+			}
+		}
 	}
 	
 }
